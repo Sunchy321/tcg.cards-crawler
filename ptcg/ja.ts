@@ -121,21 +121,23 @@ class PtcgJACrawler extends WebCrawler {
     async run() {
         const first = await this.json<PokemonCardResponse>(baseUrl);
 
-        await this.runPage(first);
+        let count = 0;
+
+        count += await this.runPage(first, count);
 
         for (let i = 2; i <= first.maxPage; ++i) {
             const url = `${baseUrl}&page=${i}`;
 
             const page = await this.json<PokemonCardResponse>(url);
 
-            await this.runPage(page);
+            count += await this.runPage(page, count);
         }
     }
 
-    async runPage(page: PokemonCardResponse) {
+    async runPage(page: PokemonCardResponse, prevCount = 0) {
         process.stdout.clearLine(0);
         process.stdout.cursorTo(0);
-        console.log(`${page.thisPage}/${page.maxPage}, total: ${page.cardList.length}/${page.hitCnt}`);
+        console.log(`${page.thisPage}/${page.maxPage}, total: ${prevCount + page.cardList.length}/${page.hitCnt}`);
 
         for (const [i, c] of page.cardList.entries()) {
             await this.runCard(Number.parseInt(c.cardID, 10));
@@ -144,6 +146,8 @@ class PtcgJACrawler extends WebCrawler {
             process.stdout.cursorTo(0);
             process.stdout.write(`${i + 1}/${page.cardList.length} cards`);
         }
+
+        return page.cardList.length;
     }
 
     completeUrl(url: string) {
