@@ -212,24 +212,20 @@ class PtcgJACrawler extends WebCrawler {
         }).join('').trim();
     }
 
-    findEvolveFrom(elems: Element[], $: CheerioAPI): string | undefined {
-        const lines = $(elems).filter('div.evolution').get();
+    findEvolveFrom(elems: Element[], $: CheerioAPI, name: string): string | undefined {
+        const tags = $(elems).find('a').get();
 
-        for (const [i, l] of lines.entries()) {
-            if ($(l).hasClass('ev_on') || $(l).find('.ev_on').length > 0) {
-                for (const n of lines.slice(i + 1)) {
-                    const tags = $(n).find('a');
-
-                    if (tags.length == 1) {
-                        const arrow = $(tags[0]).siblings('div.arrow_off');
-
-                        if (arrow.length > 0) {
-                            return $(tags[0]).text().trim();
-                        }
+        for (const [i, a] of tags.entries()) {
+            if (this.getText($(a), $) == name) {
+                for (const n of tags.slice(i + 1)) {
+                    if ($(n).siblings('div.arrow_off').length > 0 || $(n).siblings('div.arrow_on').length > 0) {
+                        return this.getText($(n), $).trim();
                     }
                 }
             }
         }
+
+        return undefined;
     }
 
     async runCard(id: number) {
@@ -469,7 +465,7 @@ class PtcgJACrawler extends WebCrawler {
 
                 const titleText = $(g.title).text().trim();
 
-                const name = $(g.contents.find(e => e.tagName === 'h4')).text().trim();
+                const title = $(g.contents.find(e => e.tagName === 'h4')).text().trim();
 
                 const effect = g.contents
                     .filter(e => e.tagName === 'p')
@@ -479,27 +475,27 @@ class PtcgJACrawler extends WebCrawler {
 
                 if (titleText === '特性') {
                     abilities ??= [];
-                    abilities.push({ name, effect });
+                    abilities.push({ name: title, effect });
 
-                    text += `\n\n[特性]${name}\n${effect}`;
+                    text += `\n\n[特性]${title}\n${effect}`;
                 } else if (titleText === '古代能力') {
-                    text += `\n\n[古代能力]${name}\n${effect}`;
+                    text += `\n\n[古代能力]${title}\n${effect}`;
 
                     tags.push('ancient_trait');
                 } else if (titleText === 'ポケパワー') {
-                    text += `\n\n[ポケパワー]${name}\n${effect}`;
+                    text += `\n\n[ポケパワー]${title}\n${effect}`;
 
                     tags.push('poke_power');
                 } else if (titleText === 'ポケボディー') {
-                    text += `\n\n[ポケボディー]${name}\n${effect}`;
+                    text += `\n\n[ポケボディー]${title}\n${effect}`;
 
                     tags.push('poke_body');
                 } else if (titleText === 'どうぐ') {
-                    text += `\n\n[どうぐ]${name}\n${effect}`;
+                    text += `\n\n[どうぐ]${title}\n${effect}`;
 
                     tags.push('held_item');
                 } else if (titleText === 'きのみ') {
-                    text += `\n\n[きのみ]${name}\n${effect}`;
+                    text += `\n\n[きのみ]${title}\n${effect}`;
 
                     tags.push('held_berry');
                 } else if (titleText === 'ワザ' || titleText === 'GXワザ') {
@@ -603,7 +599,7 @@ class PtcgJACrawler extends WebCrawler {
                     continue;
                 } else if (titleText === '進化') {
                     if (stage !== 'たね') {
-                        const result = this.findEvolveFrom(g.contents, $);
+                        const result = this.findEvolveFrom(g.contents, $, name);
 
                         if (result == null) {
                             throw new Error(`Unknown evolve from for card ${id} (${name})`);
