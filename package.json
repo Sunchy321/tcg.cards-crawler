@@ -1,0 +1,23 @@
+{
+	"dependencies": {
+		"axios": "^1.9.0",
+		"card-interface": "link:../source/packages/interface",
+		"cheerio": "^1.0.0",
+		"domhandler": "^5.0.3",
+		"lodash": "^4.17.21",
+		"logform": "^2.7.0",
+		"ts-node": "^10.9.2",
+		"winston": "^3.17.0"
+	},
+	"devDependencies": {
+		"@eslint/eslintrc": "^3.3.1",
+		"@eslint/js": "^9.26.0",
+		"@stylistic/eslint-plugin": "^4.2.0",
+		"@types/lodash": "^4.17.16",
+		"@types/node": "^22.12.0",
+		"eslint": "^9.26.0",
+		"globals": "^16.1.0",
+		"typescript": "^5.7.3",
+		"typescript-eslint": "^8.32.0"
+	}
+}
