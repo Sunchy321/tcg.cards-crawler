@@ -118,14 +118,18 @@ const tagList = [
 ];
 
 class PtcgJACrawler extends WebCrawler {
-    async run() {
+    async run(start = 1) {
         const first = await this.json<PokemonCardResponse>(baseUrl);
 
         let count = 0;
 
-        count += await this.runPage(first, count);
+        if (start === 1) {
+            count += await this.runPage(first, count);
+        } else {
+            count += first.cardList.length * (start - 1);
+        }
 
-        for (let i = 2; i <= first.maxPage; ++i) {
+        for (let i = start > 1 ? start : 2; i <= first.maxPage; ++i) {
             const url = `${baseUrl}&page=${i}`;
 
             const page = await this.json<PokemonCardResponse>(url);
@@ -226,13 +230,26 @@ class PtcgJACrawler extends WebCrawler {
                         return this.getText($(n), $).trim();
                     }
                 }
+
+                // 复原宝可梦
+                if ($(elems).find('p').get().some(e => $(e).text() === '復元')) {
+                    return '復元';
+                }
+
+                if ($(elems).find('p').get().some(e => $(e).text() === 'ひみつのコハク')) {
+                    return 'ひみつのコハク';
+                }
+
+                if ($(elems).find('p').get().some(e => $(e).text().includes('の化石'))) {
+                    return $(elems).find('p').get().map(e => $(e).text()).find(t => t.includes('の化石'));
+                }
             }
         }
 
         return undefined;
     }
 
-    async runCard(id: number) {
+    async runCard(id: number, force = false) {
         const url = `https://www.pokemon-card.com/card-search/details.php/card/${id}`;
 
         const jsonPath = `./data/ptcg/ja/${id}.json`;
@@ -243,7 +260,7 @@ class PtcgJACrawler extends WebCrawler {
             fs.mkdirSync(dir, { recursive: true });
         }
 
-        if (fs.existsSync(jsonPath)) {
+        if (fs.existsSync(jsonPath) && !force) {
             return;
         }
 
@@ -337,8 +354,14 @@ class PtcgJACrawler extends WebCrawler {
 
                     pokedex.number = Number.parseInt(dexline[0].split('.')[1], 10);
                     pokedex.category = dexline[1];
-                } else {
-                    throw new Error(`Unknown dexline "${h4.text()}" for card ${id} (${name})`);
+                } else if (dexline.length === 1) {
+                    pokedex ??= { };
+
+                    if (/\d+/.test(dexline[0].trim())) {
+                        pokedex.number = Number.parseInt(dexline[0].trim(), 10);
+                    } else {
+                        pokedex.category = dexline[0].trim();
+                    }
                 }
             }
 
@@ -366,8 +389,6 @@ class PtcgJACrawler extends WebCrawler {
                 } else {
                     flavorText = p.text();
                 }
-            } else {
-                throw new Error(`Unknown pokedex p length ${p.length} for card ${id} (${name})`);
             }
         }
 
@@ -395,7 +416,7 @@ class PtcgJACrawler extends WebCrawler {
         const levelSpan = $('span.level-num');
 
         if (levelSpan.length > 0) {
-            level = Number.parseInt(levelSpan.text().trim(), 10);
+            level = levelSpan.text().trim();
         }
 
         // 属性
@@ -576,15 +597,20 @@ class PtcgJACrawler extends WebCrawler {
 
                         let tagKnown = false;
 
-                        for (const tag in tagList) {
+                        for (const tag of tagList) {
                             if (text.includes(tag)) {
                                 tags.push(tag);
                                 tagKnown = true;
                             }
                         }
 
+                        if (text === teraText) {
+                            tags.push('tera');
+                            tagKnown = true;
+                        }
+
                         if (!tagKnown) {
-                            throw new Error(`Unknown tag "${text}" for card ${id} (${name})`);
+                            logger.warn(`Unknown tag "${text}" for card ${id} (${name})`);
                         }
 
                         if (tags.includes('LV.X')) {
@@ -603,7 +629,32 @@ class PtcgJACrawler extends WebCrawler {
                     continue;
                 } else if (titleText === '進化') {
                     if (stage !== 'たね') {
-                        const result = this.findEvolveFrom(g.contents, $, name);
+                        let result = this.findEvolveFrom(g.contents, $, name)
+                          ?? this.findEvolveFrom(g.contents, $, name.replace(/ /g, ''))
+                          ?? this.findEvolveFrom(g.contents, $, name.replace(/(ex|GX)$/, ''))
+                          ?? this.findEvolveFrom(g.contents, $, name.replace(/\[.*?\]$/, ''));
+
+                        if (
+                            result == null
+                            && stage === 'レベルアップ'
+                            && level === 'X'
+                            && !name.includes('LV.X')
+                        ) {
+                            result = this.findEvolveFrom(g.contents, $, name + ' LV.X');
+                        }
+
+                        if (result == null) {
+                            result = {
+                                2080:  'ずがいの化石',
+                                2081:  'ずがいの化石',
+                                2132:  'ずがいの化石',
+                                2133:  'ずがいの化石',
+                                4021:  'トドグラー',
+                                21190: 'ずがいの化石',
+                                21192: 'ずがいの化石',
+                                32353: '小林幸子EX',
+                            }[id];
+                        }
 
                         if (result == null) {
                             throw new Error(`Unknown evolve from for card ${id} (${name})`);
@@ -704,10 +755,18 @@ class PtcgJACrawler extends WebCrawler {
 
 const crawler = new PtcgJACrawler();
 
-if (process.argv[2] != null) {
-    crawler.runCard(Number.parseInt(process.argv[2], 10)).catch(e => {
-        logger.error(e.message);
-    });
+const arg = process.argv[2];
+
+if (arg != null) {
+    if (arg.startsWith('-p')) {
+        crawler.run(Number.parseInt(arg.slice(2), 10)).catch(e => {
+            logger.error(e.message);
+        });
+    } else if (arg.startsWith('-c')) {
+        crawler.runCard(Number.parseInt(arg.slice(2), 10), true).catch(e => {
+            logger.error(e.message);
+        });
+    }
 } else {
     crawler.run().catch(e => {
         logger.error(e.message);
