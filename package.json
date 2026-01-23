@@ -1,12 +1,13 @@
 {
 	"dependencies": {
 		"axios": "^1.9.0",
-		"card-interface": "link:../source/packages/interface",
 		"cheerio": "^1.0.0",
+		"crawlee": "^3.15.3",
 		"domhandler": "^5.0.3",
+		"drizzle-orm": "^0.45.1",
 		"lodash": "^4.17.21",
 		"logform": "^2.7.0",
-		"ts-node": "^10.9.2",
+		"pg": "^8.17.2",
 		"winston": "^3.17.0"
 	},
 	"devDependencies": {

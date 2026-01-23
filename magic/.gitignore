@@ -1,0 +1,11 @@
+# Environment variables
+.env
+
+# Crawlee storage
+storage/
+
+# Logs
+*.log
+
+# Node modules (if any local dependencies)
+node_modules/
