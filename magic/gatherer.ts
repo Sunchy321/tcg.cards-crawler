@@ -87,9 +87,10 @@ export class GathererCrawler {
                     // 解析页面
                     const cardData = await this.parseGathererPage($, multiverseId);
 
+                    // 保存到数据库（无论是否解析成功）
+                    await this.saveToDatabase(multiverseId, cardData);
+
                     if (cardData) {
-                        // 保存到数据库
-                        await this.saveToDatabase(multiverseId, cardData);
                         log.info(`Successfully crawled ${multiverseId}: ${cardData.instanceName}`);
 
                         // 保存到数据集
@@ -99,11 +100,13 @@ export class GathererCrawler {
                             set:  cardData.setName,
                         });
                     } else {
-                        log.warning(`No card data found for ${multiverseId}`);
+                        log.warning(`No card data found for ${multiverseId}, saved as null`);
                     }
                 } catch (error) {
                     log.error(`Error crawling ${multiverseId}:`, error);
-                    throw error;
+                    // 解析失败时也保存 null
+                    await this.saveToDatabase(multiverseId, null);
+                    // 不再抛出错误，继续处理下一个
                 }
             },
             failedRequestHandler: async ({ request, log }) => {
@@ -184,7 +187,7 @@ export class GathererCrawler {
         return null;
     }
 
-    private async saveToDatabase(multiverseId: number, data: GathererData): Promise<void> {
+    private async saveToDatabase(multiverseId: number, data: GathererData | null): Promise<void> {
         const expiresAt = new Date();
         expiresAt.setDate(expiresAt.getDate() + CACHE_EXPIRATION_DAYS);
 
