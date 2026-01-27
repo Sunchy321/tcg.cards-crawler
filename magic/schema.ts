@@ -1,14 +1,6 @@
-import { integer, jsonb, pgSchema, timestamp } from 'drizzle-orm/pg-core';
+import { integer, jsonb, pgSchema, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const schema = pgSchema('magic');
-
-export const Gatherer = schema.table('data_gatherer', {
-    multiverseId: integer('multiverse_id').primaryKey(),
-    data:         jsonb('data').$type<GathererData>(),
-    createdAt:    timestamp('created_at').notNull().defaultNow(),
-    expiresAt:    timestamp('expires_at').notNull(),
-});
-
 export interface GathererData {
     resourceId:          string;
     multiverseId:        number;
@@ -94,3 +86,24 @@ export interface GathererData {
         code:            string;
     }[];
 }
+
+export const Gatherer = schema.table('data_gatherer', {
+    multiverseId: integer('multiverse_id').primaryKey(),
+    data:         jsonb('data').$type<GathererData>(),
+    createdAt:    timestamp('created_at').notNull().defaultNow(),
+    expiresAt:    timestamp('expires_at').notNull(),
+});
+
+export const locale = schema.enum('locale', [
+    'en', 'zhs', 'zht', 'de', 'fr', 'it', 'ja', 'ko', 'pt', 'ru', 'es',
+    'ph', 'he', 'ar', 'sa', 'grc', 'la', 'qya',
+]);
+
+export const Print = schema.table('prints', {
+    cardId: text('card_id').notNull(),
+    set:    text('set').notNull(),
+    number: text('number').notNull(),
+    lang:   locale('lang').notNull(),
+
+    multiverseId: integer('multiverse_id').array().notNull(),
+});
