@@ -145,7 +145,9 @@ export class GathererCrawler {
                     const cardData = await this.parseGathererPage($, multiverseId);
 
                     // 保存到数据库（无论是否解析成功）
-                    await this.saveToDatabase(multiverseId, cardData);
+                    if (cardData != null || fullScan) {
+                        await this.saveToDatabase(multiverseId, cardData);
+                    }
 
                     this.count++;
                     const progress = `(${this.count}/${this.total})`;
@@ -165,8 +167,6 @@ export class GathererCrawler {
                     }
                 } catch (error) {
                     log.error(`Error crawling ${multiverseId}:`, error);
-                    // 解析失败时也保存 null
-                    await this.saveToDatabase(multiverseId, null);
                     // 不再抛出错误，继续处理下一个
                 }
             },
@@ -202,23 +202,18 @@ export class GathererCrawler {
             .replace(/^self.__next_f\.push\(\[\d+,"\d+:/, '"')
             .replace(/\]\)$/, '');
 
-        try {
-            const hydrationText = JSON.parse(hydration);
-            const hydrationData = JSON.parse(hydrationText);
+        const hydrationText = JSON.parse(hydration);
+        const hydrationData = JSON.parse(hydrationText);
 
-            // 递归查找卡片数据
-            const cardData = this.recursiveFindCard(hydrationData);
+        // 递归查找卡片数据
+        const cardData = this.recursiveFindCard(hydrationData);
 
-            if (!cardData) {
-                log.warning(`Card data not found in hydration for ${multiverseId}`);
-                return null;
-            }
-
-            return cardData;
-        } catch (error) {
-            log.error(`Failed to parse hydration data for ${multiverseId}:`, error);
+        if (!cardData) {
+            log.warning(`Card data not found in hydration for ${multiverseId}`);
             return null;
         }
+
+        return cardData;
     }
 
     private recursiveFindCard(obj: any): GathererData | null {
