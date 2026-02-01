@@ -238,12 +238,11 @@ export class GathererCrawler {
         }
 
         if (Array.isArray(obj)) {
-            if (Array.isArray(obj[0])) {
-                return this.recursiveFindCard(obj[0][3]);
-            } else if (Array.isArray(obj[1])) {
-                return this.recursiveFindCard(obj[1][3]);
-            } else {
-                return this.recursiveFindCard(obj[3]);
+            for (const item of obj) {
+                const result = this.recursiveFindCard(item);
+                if (result != null) {
+                    return result;
+                }
             }
         }
 
