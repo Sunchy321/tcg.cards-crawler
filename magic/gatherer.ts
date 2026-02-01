@@ -12,6 +12,7 @@ interface CrawlerOptions {
     ignoreUnexpired?: boolean;
     concurrency?:     number;
     fullScan?:        boolean;
+    dbIgnoreNull?:    boolean;
 }
 
 export class GathererCrawler {
@@ -27,11 +28,12 @@ export class GathererCrawler {
             ignoreUnexpired: options.ignoreUnexpired ?? false,
             concurrency:     options.concurrency ?? 5,
             fullScan:        options.fullScan ?? false,
+            dbIgnoreNull:    options.dbIgnoreNull ?? true,
         };
     }
 
     async run() {
-        const { startId, maxId, ignoreUnexpired, concurrency, fullScan } = this.options;
+        const { startId, maxId, ignoreUnexpired, concurrency, fullScan, dbIgnoreNull } = this.options;
 
         // 创建请求列表
         const requests = [];
@@ -86,13 +88,23 @@ export class GathererCrawler {
         if (!ignoreUnexpired) {
             // 如果不忽略未过期数据，先查询数据库过滤
             log.info('Querying database to filter unexpired data...');
+            if (dbIgnoreNull) {
+                log.info('Ignoring null entries in database');
+            }
 
             // 一次性查询所有目标 ID 中未过期的数据
             const now = new Date();
+            const conditions = [gte(Gatherer.expiresAt, now)];
+
+            // 根据 dbIgnoreNull 选项决定是否过滤 null
+            if (dbIgnoreNull) {
+                conditions.push(sql`${Gatherer.data} IS NOT NULL`);
+            }
+
             const unexpiredRecords = await db
                 .select({ multiverseId: Gatherer.multiverseId })
                 .from(Gatherer)
-                .where(gte(Gatherer.expiresAt, now));
+                .where(and(...conditions));
 
             // 创建一个 Set 用于快速查找未过期的 ID
             const unexpiredIds = new Set(unexpiredRecords.map(r => r.multiverseId));

@@ -9,6 +9,7 @@ interface CliOptions {
     ignoreUnexpired?: boolean;
     concurrency?:     number;
     fullScan?:        boolean;
+    dbIgnoreNull?:    boolean;
 }
 
 function showHelp() {
@@ -24,6 +25,7 @@ Arguments:
 Options:
   --start <id>            Starting multiverse ID (default: 1)
   --ignore-unexpired      Ignore (force refresh) cards with unexpired cache data (default: false)
+  --db-ignore-null        Ignore null entries when filtering unexpired data (default: true)
   --concurrency <num>     Number of concurrent requests (default: 5)
   --full-scan             Scan all IDs in range instead of only Print table IDs (default: false)
   -h, --help              Show this help message
@@ -75,6 +77,11 @@ function parseCliArgs(): CliOptions {
                 default: false,
                 short:   'f',
             },
+            'db-ignore-null': {
+                type:    'boolean',
+                default: false,
+                short:   'd',
+            },
         },
     });
 
@@ -88,6 +95,7 @@ function parseCliArgs(): CliOptions {
     const options: CliOptions = {
         ignoreUnexpired: values['ignore-unexpired'] ?? false,
         fullScan,
+        dbIgnoreNull:    values['db-ignore-null'] ?? true,
     };
 
     // 解析 maxId（如果提供）
