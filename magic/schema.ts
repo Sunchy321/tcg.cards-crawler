@@ -1,6 +1,8 @@
 import { integer, jsonb, pgSchema, text, timestamp } from 'drizzle-orm/pg-core';
 
 export const schema = pgSchema('magic');
+export const dataSchema = pgSchema('magic_data');
+
 export interface GathererData {
     resourceId:          string;
     multiverseId:        number;
@@ -87,7 +89,7 @@ export interface GathererData {
     }[];
 }
 
-export const Gatherer = schema.table('data_gatherer', {
+export const Gatherer = dataSchema.table('gatherer', {
     multiverseId: integer('multiverse_id').primaryKey(),
     data:         jsonb('data').$type<GathererData>(),
     createdAt:    timestamp('created_at').notNull().defaultNow(),
